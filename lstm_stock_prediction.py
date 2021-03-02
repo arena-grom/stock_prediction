@@ -4,6 +4,7 @@
 Created on Wed Feb 24 19:51:14 2021
 @author: arena
 """
+import explore_nvidia
 import numpy as np
 import pandas as pd
 #import time
@@ -12,24 +13,13 @@ import matplotlib.pyplot as plt
 #from matplotlib.dates import YearLocator, MonthLocator, DateFormatter
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, LSTM #, SimpleRNN
+from keras.layers import Dense, Dropout, LSTM, Flatten #, SimpleRNN
 
 #todays_date = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d")
 
 
 #%% Functions
-
-def plot_stock_data(df, title, feature='Close' , date_formatter='%Y', color='darkred'):
-    '''Function for plotting stock data'''
-    
-    df[feature].plot(figsize=(14,7), color=color)
-    plt.suptitle(title, fontsize=18)
-    # plt.xticks(rotation=45)
-    plt.xlabel('Date')
-    plt.ylabel(feature)
-    plt.grid()
-    plt.show()
-    
+  
     
 def preprocess_data(data, feature='Close', seq_len=60, test_n=600):
     """ Function that transforms raw data to LSTM input data """
@@ -79,7 +69,7 @@ def evaluate_model():
 class StockLSTM():
     """ Class that sets up a LSTM network for Stock price prediction """
     
-    def __init__(self, X_train, y_train, input_units=92):
+    def __init__(self, X_train, y_train, input_nodes=92):
         print('\nInitializing LSTM network.\n')
         self.X = X_train
         self.y = y_train
@@ -89,14 +79,15 @@ class StockLSTM():
         
         # initialize Keras MLP model and first input layer
         self.model = Sequential()
-        self.model.add(LSTM(units=input_units, input_shape=(self.X.shape[1], 1), return_sequences=True))
+        self.model.add(LSTM(units=input_nodes, input_shape=(self.X.shape[1], 1), return_sequences=True))
         
     """ Adding layers and compiling the architecture """
-    def add_lstm_layer(self, units=92, return_seq=False):
-        self.model.add(LSTM(units=units, return_sequences=return_seq))
+    def add_lstm_layer(self, nodes=92, return_seq=False):
+        self.model.add(LSTM(units=nodes, return_sequences=return_seq))
        
-    def add_dense_layer(self, units=1):
-        self.model.add(Dense(units=units))
+    def add_dense_layer(self, nodes=1):
+        self.model.add(Flatten())
+        self.model.add(Dense(units=nodes))
         
     def add_dropout(self, dropout_rate=0.2):
         self.model.add(Dropout(dropout_rate))
@@ -107,11 +98,10 @@ class StockLSTM():
         print(self.model.summary())
         
     """ Training the LSTM model on X_train """
-    def train(self, epochs=100, batch_size=100, validation_rate=0.3, verbose=1):
+    def train(self, epochs=100, batch_size=100, verbose=1): # can I have validation_rate=0.3
         if self.compiled:
             print('\nTraining LSTM model on training data.')
             self.trained = self.model.fit(self.X, self.y, 
-                                          validation_split=validation_rate, 
                                           epochs=epochs, batch_size=batch_size,
                                           verbose=verbose)
         else: print('Error: Model not compiled!') 
@@ -121,7 +111,7 @@ class StockLSTM():
         if self.trained != None:
             fig = plt.figure(figsize=(14,7))
             plt.plot(self.trained.history['loss'])
-            plt.plot(self.trained.history['val_loss'])
+            # plt.plot(self.trained.history['val_loss'])
             plt.suptitle('LSTM Loss during epochs', fontsize=18)
             plt.ylabel('Loss')
             plt.xlabel('Epoch')
@@ -146,21 +136,12 @@ class StockLSTM():
 
 #%% Main read data
 
+nvidia_df = explore_nvidia.read_stock_data()
 
-nvidia_df = pd.read_csv('NVDA.csv')
-nvidia_df.set_index('Date', drop=False, inplace=True)
-print('Data read.')
-print(nvidia_df.shape)
-print(f'\nDataset:\n{nvidia_df.head()}')
-print(f'\nSummary:\n{nvidia_df.describe()}')
-
-print(f'\nNaNs in the data: {nvidia_df.isnull().sum()}')
-
-print('# ------------------------------- #')
 #%% Plot
 
-plot_stock_data(nvidia_df, title='NVIDIA stock price all time') # date_formatter : ['%Y-%m-%d']
-plot_stock_data(nvidia_df.tail(1000), title='NVIDIA stock price 2017-2021', date_formatter='%Y-%m')
+explore_nvidia.plot_stock_data(nvidia_df, title='NVIDIA stock price all time') # date_formatter : ['%Y-%m-%d']
+explore_nvidia.plot_stock_data(nvidia_df.tail(1000), title='NVIDIA stock price 2017-2021', date_formatter='%Y-%m')
 
 print('# ------------------------------- #')
 #%% Process the training data
@@ -169,10 +150,10 @@ X_train, y_train, test = preprocess_data(nvidia_df)
 print('# ------------------------------- #')
 #%% Setting up LSTM 1
 
-lstm_model = StockLSTM(X_train, y_train) # Init and first layer
+lstm_model = StockLSTM(X_train, y_train, input_nodes=15) # Init and first layer
 lstm_model.add_dropout() 
 
-lstm_model.add_lstm_layer(return_seq=True) # Second layer
+lstm_model.add_lstm_layer(nodes=15, return_seq=True) # Second layer
 lstm_model.add_dropout() 
 
 #lstm_model.add_lstm_layer(units=92) # last LSTM layer does not return seq
@@ -180,19 +161,19 @@ lstm_model.add_dropout()
 
 lstm_model.add_dense_layer() # Output layer
 
-# Compiling and training
+# Compiling
 lstm_model.add_compile()
 
-#%%
-lstm_model.train(epochs=10, batch_size=500)
+#%% Training LSTM
+lstm_model.train(epochs=30, batch_size=100)
 lstm_model.plot_history()
 
-
+#%% Prediction and Evaluation
 # predicted_y = clf.test_predict(X_test)
 
 # evaluate_model(y=y_test_raw, pred=predicted_y)
 
-
+#%%
 print('\nFinished running code.')
 
 
