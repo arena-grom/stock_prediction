@@ -15,13 +15,14 @@ import visualizations
 
 # Importing necessary libraries
 import numpy as np
+import pandas as pd
 
 
 if __name__ == '__main__':
     
     
     # read data
-    stock_df = data_handling.read_data() # read NVDA.csv
+    stock_df = data_handling.read_data(filepath='NVDA.csv') # read NVDA.csv
     visualizations.plot_linear(stock_df, 'NVIDIA all time Stock Closing Prices')
     
     # calculate Moving Average
@@ -45,22 +46,31 @@ if __name__ == '__main__':
     # visualize candlestick and MA
     visualizations.plot_candlestick(linear_df, 'NVIDIA stock from 2020-3-17 to 2020-9-2',
                                     MA1='MA5', MA2='MA20', MA3='MA100')
-
+    
     # split training and test data
     TEST_N = 24
     X_train, y_train, X_test, y_test, scaler = data_handling.preprocess_data(linear_df, seq_len=10, test_size=TEST_N)
+    
+    # extract training and test values
+    close = linear_df[['Date', 'Close']].set_index('Date')
+    close_train = close[:-TEST_N].copy()
+    close_test = close[-TEST_N:].copy()
 
 
-    # --------------------- Linear Regression -----------------------#
+    # --------------------- Linear Regression --------------------- #
     # train linred model
     linreg = models.StockLinReg(X_train, y_train)
     linreg.train()
     
     # predict and evaluate
     linreg.predict(X_test, y_test)
+    
+    # adding Linear Regression predictions
+    linreg_preds = np.reshape(linreg.preds, (linreg.preds.shape[0], 1))
+    close_test['LinReg'] = data_handling.revert_scale(scaler, linreg_preds)
 
 
-    # ------------------------ LSTM ------------------------------- #
+    # -------------------------- LSTM ------------------------------ #
     # reshape for LSTM input
     X_train_lstm = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
     X_test_lstm = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
@@ -80,23 +90,14 @@ if __name__ == '__main__':
     # train and evaluate
     lstm.train(epochs=40, batch_size=10)
     lstm.predict(X_test_lstm, y_test)
+    
+    # adding LSTM predictions
+    close_test['LSTM'] = data_handling.revert_scale(scaler, lstm.preds).astype(float)
 
 
     # ----------------------- Final result ------------------------- #
     
-    # extract training and test values
-    close = linear_df[['Date', 'Close']].set_index('Date')
-    close_train = close[:-TEST_N].copy()
-    close_test = close[-TEST_N:].copy()
-    
-    # adding Linear Regression predictions
-    linreg_preds = np.reshape(linreg.preds, (linreg.preds.shape[0], 1))
-    close_test['LinReg'] = data_handling.revert_scale(scaler, linreg_preds)
-    
-    # adding LSTM predictions
-    close_test['LSTM'] = data_handling.revert_scale(scaler, lstm.preds).astype(float)
-    
-    # final visualization plot
+    # plot predictions
     visualizations.plot_predictions(close_train, close_test, legend=['Train', 'Test', 'LinReg', 'LSTM'])
     
     print('\nFinished running code.')

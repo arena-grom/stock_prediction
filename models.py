@@ -14,7 +14,8 @@ import visualizations
 import numpy as np
 import matplotlib.pyplot as plt
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, LSTM, Flatten #, SimpleRNN
+from keras.layers import Dense, Dropout, LSTM, Flatten
+from statsmodels.tsa.arima.model import ARIMA
 from sklearn.linear_model import LinearRegression
 
 
@@ -27,14 +28,12 @@ def moving_average(df, n, feature='Close'):
     df[colname] = df[feature].rolling(n).mean()
     
 
-
 class StockModel():
     """ Parent class for setting up a model on Stock time-series data"""
     
     def __init__(self, X_train, y_train):
         self.X = X_train
         self.y = y_train        
-        self.compliled=False
         self.trained=None
         self.preds=None
         self.rmse=None
@@ -50,6 +49,21 @@ class StockModel():
         else: print('You need to train a model first!')
 
 
+class StockLinReg(StockModel):
+    """ Child class that trains a Linear Regression model """
+    
+    def __init__(self, X_train, y_train):
+        super().__init__(X_train, y_train)
+        
+        print('\nInitializing Linear Regression.\n')
+        self.model = LinearRegression()
+      
+    def train(self):
+        print('\nTraining Linear Regression model on training data.')
+        self.model.fit(self.X, self.y)
+        self.trained=True
+
+
 class StockLSTM(StockModel):
     """ Child class that sets up and trains a LSTM network"""
     
@@ -58,6 +72,7 @@ class StockLSTM(StockModel):
         
         print('\nInitializing LSTM network.\n')
         # initialize Keras MLP model and first input layer
+        self.compliled=False
         self.model = Sequential()
         self.model.add(LSTM(units=input_nodes, input_shape=(self.X.shape[1], 1), return_sequences=True))
         
@@ -78,7 +93,6 @@ class StockLSTM(StockModel):
         print(self.model.summary())
         
     def train(self, epochs=100, batch_size=100, verbose=1, plot=True):
-        """ Training the LSTM model on X_train """
         if self.compiled:
             print('\nTraining LSTM model on training data.')
             self.trained = self.model.fit(self.X, self.y, 
@@ -92,22 +106,5 @@ class StockLSTM(StockModel):
             
         else: print('Error: LSTM not compiled!') 
                
-
-
-class StockLinReg(StockModel):
-    """ Child class that trains a Linear Regression model """
-    
-    def __init__(self, X_train, y_train):
-        super().__init__(X_train, y_train)
-        
-        print('\nInitializing Linear Regression.\n')
-        self.model = LinearRegression()
-      
-    def train(self):
-        self.model.fit(self.X, self.y)
-        self.trained=True
-        
-
-
     
 # END

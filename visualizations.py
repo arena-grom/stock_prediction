@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.io as pio
+from pandas.plotting import lag_plot, autocorrelation_plot
 
 plt.style.use('seaborn-darkgrid')
 pio.renderers.default='browser'
@@ -75,6 +76,7 @@ def plot_training(values, title, y, x):
     plt.xlabel(x)
     plt.show()
     
+
 def plot_predictions(df_train, df_test, legend):
     """ Visualize stock training data, the test data and different predictions """
 

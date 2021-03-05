@@ -15,7 +15,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 # Functions for data handling
 
-def read_data(filepath='NVDA.csv'):
+def read_data(filepath):
     """ Read CSV with historical stock data """
     
     df = pd.read_csv(filepath)
