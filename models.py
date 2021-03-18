@@ -164,8 +164,7 @@ class StockLSTM(StockModel):
     def predict(self):
         print('\nPredicting with LSTM model...')
         if self.trained:
-            predictions = self.model.predict(self.X_test)
-            self.predictions = [pred[0] for pred in predictions]
-            self.predictions = np.reshape(self.predictions, -1)
+            self.predictions = np.array(
+                self.model.predict(self.X_test)).astype(float).T[0]
         else:
             warnings.warn('Error predicting. Model must be trained!')

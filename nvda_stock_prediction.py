@@ -91,6 +91,8 @@ lstm.evaluate_model(model_name='LSTM')
 # extract training and test values
 close_true = linear_data[['Date', 'Close']].set_index('Date')
 close_pred = close_true[-TEST_N:].copy()
+y = np.reshape(y_test, (y_test.shape[0], 1))
+close_pred['Test'] = data_handling.revert_scale(scaler, y).astype(float)
 
 # add LSTM
 lstm_preds = np.reshape(np.array(lstm.predictions),
